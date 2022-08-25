@@ -244,6 +244,20 @@ var Petra = function() {
             $('#processing-info-inputs tr:last').after(tr);
         }
 
+        $('#processing-input button.wps-digitizing.extent').each(function(){
+            addDigitizingExtentHandler($(this).attr('id'));
+        });
+
+        lizMap.mainEventDispatcher.addListener(
+            () => {
+                var btn = $('#processing-input button.wps-digitizing.active');
+                if (btn.hasClass('extent')) {
+                    updateDigitizingExtent(btn.attr('id'))
+                }
+            },
+            ['digitizing.featureDrawn']
+        );
+
         for (var i=0,ii=outputs.length; i<ii; ++i) {
             output = outputs[i];
             // outputs table
@@ -326,6 +340,7 @@ var Petra = function() {
 
         container.appendChild(control);
         addValueHandlers(field, function() {
+            console.log(field.value);
             input.boundingBoxData = {
                 projection: "EPSG:4326",
                 bounds: OpenLayers.Bounds.fromString(field.value)
@@ -343,7 +358,12 @@ var Petra = function() {
             };
         });
 
-        $(field).after('<br><button class="btn btn-mini">Drawing extent</button>');
+        var btn = document.createElement("button");
+        btn.id = 'processing-input-'+name.replaceAll(':', '_')+'-btn';
+        btn.setAttribute('class', 'btn btn-mini wps-digitizing extent');
+        btn.innerHTML = 'Drawing extent';
+
+        $(field).after(btn).after('<br>');
     }
 
     // helper function to create a literal input textfield or dropdown
@@ -673,6 +693,37 @@ var Petra = function() {
             }
             onblur.apply(this, arguments);
         };
+    }
+
+    function addDigitizingExtentHandler(btnId) {
+        var btn = document.getElementById(btnId);
+        btn.onclick = function() {
+            var self = $(btn);
+            if ( self.hasClass('active') ) {
+                lizMap.mainLizmap.digitizing.toolSelected = 'deactivate';
+                $(btn).removeClass('active');
+            } else {
+                $('#processing-input button.wps-digitizing.active').removeClass('active');
+                lizMap.mainLizmap.digitizing.toolSelected = 'box';
+                $(btn).addClass('active');
+            }
+        }
+    }
+
+    function updateDigitizingExtent(btnId) {
+        console.log(btnId);
+        var btn = document.getElementById(btnId);
+        console.log(btn.parentElement.firstChild.id);
+        var feat = lizMap.mainLizmap.digitizing.featureDrawn.pop();
+        console.log(feat.geometry.bounds);
+        var bounds = new OpenLayers.Bounds(feat.geometry.bounds.toArray());
+        console.log(bounds);
+        bounds.transform(lizMap.mainLizmap.digitizing.drawLayer.projection, 'EPSG:4326');
+        console.log(bounds);
+        btn.parentElement.firstChild.value = bounds.toString() + ' (EPSG:4326)';
+        btn.parentElement.firstChild.onblur();
+        lizMap.mainLizmap.digitizing.drawLayer.removeFeatures([feat]);
+        btn.onclick();
     }
 
     // execute the process
