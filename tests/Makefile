@@ -8,7 +8,7 @@ LIZMAP_DIR=$(shell pwd)/lizmap
 LIZMAP_USER_ID:=$(shell id -u)
 LIZMAP_USER_GID:=$(shell id -g)
 
-LIZMAP_VERSION_TAG:=3.5
+LIZMAP_VERSION_TAG:=3.6
 QGIS_VERSION_TAG:=3.22
 
 QGIS_MAP_WORKERS:=1
@@ -95,6 +95,30 @@ pull:
 	docker pull 3liz/lizmap-web-client:${LIZMAP_VERSION_TAG}
 	docker pull 3liz/qgis-map-server:${QGIS_VERSION_TAG}
 	docker pull 3liz/qgis-wps:${QGIS_VERSION_TAG}
+
+install-module:
+	docker compose exec -u $(LIZMAP_USER_ID) lizmap php /www/lizmap/install/configurator.php --no-interaction wps
+	docker compose exec -u $(LIZMAP_USER_ID) lizmap php /www/lizmap/install/installer.php -v
+
+import-lizmap-acl:
+	@echo "Set repositories and users rights if needed"
+	@echo "Set view project"
+	docker compose exec -u $(LIZMAP_USER_ID) lizmap /bin/sh -c ' \
+		php lizmap/console.php acl2:add __anonymous "lizmap.repositories.view" tests ; \
+		php lizmap/console.php acl2:add users "lizmap.repositories.view" tests ; \
+		php lizmap/console.php acl2:add admins "lizmap.repositories.view" tests'
+	@echo "Display WMS links"
+	docker compose exec -u $(LIZMAP_USER_ID) lizmap /bin/sh -c ' \
+		php lizmap/console.php acl2:add users "lizmap.tools.displayGetCapabilitiesLinks" tests ; \
+		php lizmap/console.php acl2:add admins "lizmap.tools.displayGetCapabilitiesLinks" tests'
+	@echo "Edition"
+	docker compose exec -u $(LIZMAP_USER_ID) lizmap /bin/sh -c ' \
+		php lizmap/console.php acl2:add users "lizmap.tools.edition.use" tests ; \
+		php lizmap/console.php acl2:add admins "lizmap.tools.edition.use" tests'
+	@echo "Export layers"
+	docker compose exec -u $(LIZMAP_USER_ID) lizmap /bin/sh -c ' \
+		php lizmap/console.php acl2:add users "lizmap.tools.layer.export" tests ; \
+		php lizmap/console.php acl2:add admins "lizmap.tools.layer.export" tests'
 
 import-lizmap-acl-35:
 	@echo "Set repositories and users rights if needed"

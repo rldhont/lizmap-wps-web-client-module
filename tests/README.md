@@ -10,11 +10,14 @@ Steps
 # Clean previous versions (optional)
 make clean
 
-# Run the different services (with lizmap 3.5)
+# Run the different services (with lizmap 3.6)
 make run
 
+# Install module WPS
+make install-module
+
 # Set Lizmap ACL
-make import-lizmap-acl-35
+make import-lizmap-acl
 ```
 
 - Open your browser at http://localhost:9090
