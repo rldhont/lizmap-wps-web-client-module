@@ -51,7 +51,7 @@ Go to the "Configuration" section.
 
 * Download the zip archive from the [release page into GitHub](https://github.com/3liz/lizmap-wps-web-client-module/releases).
 * Extract files from the archive and copy the directory `wps` into `lizmap/lizmap-modules/` of Lizmap.
-* Edit the file  `lizmap/var/config/localconfig.ini.php` to add this 
+* Edit the file  `lizmap/var/config/localconfig.ini.php` to add this
   into the `[modules]` section
 
 ```ini
@@ -73,18 +73,22 @@ Add a section `[wps]` in your `localconfig.ini.php` and add the variables:
 
 ```ini
 [wps]
-wps_url=http://wps:8080
-wps_rootDirectories=/projects/wps
+wps_url="http://wps:8080"
+wps_rootDirectories="/projects/wps"
 redis_host=localhost
 redis_port=6379
 redis_key_prefix=lzmwps
-ows_url=http://map:8080
+ows_url="http://map:8080"
+restrict_to_config_projects=off
+restrict_to_authenticated_users=off
+enable_job_realm=off
+admin_job_realm=
 ```
 
 The WPS configuration:
 
 * `wps_url` is the URL of the WPS service
-* `wps_rootDirectories` is the path of the directories defined for the WPS Service MAP 
+* `wps_rootDirectories` is the path of the directories defined for the WPS Service MAP
 
 The redis configuration for saving process status: uuid, INPUTS, OUTPUTS.
 
@@ -95,3 +99,10 @@ The redis configuration for saving process status: uuid, INPUTS, OUTPUTS.
 The OWS proxy configuration:
 
 * `ows_url` is the URL of the OWS service used by the WPS service
+
+The availability of WPS algorithms in the Lizmap Web Client web maps
+
+* `restrict_to_config_projects` the module is not enabled for projects without a json config for processes.
+* `restrict_to_authenticated_users` the module is not enabled if the user is not authenticated.
+* `enable_job_realm` enable job access control by associating a realm token to each job. Job realm will be build at user level.
+* `admin_job_realm` administrator realm token. It allows bearer to bypass any other token.

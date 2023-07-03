@@ -313,6 +313,18 @@ class lizmapWPSRequest extends lizmapOGCRequest
         $headers = $this->userHttpHeader();
         $headers['Connection'] = 'close';
 
+        $wpsConfig = jApp::config()->wps;
+        if (array_key_exists('restrict_to_authenticated_users', $wpsConfig)
+            && $wpsConfig['restrict_to_authenticated_users']
+            && array_key_exists('enable_job_realm', $wpsConfig)
+            && $wpsConfig['enable_job_realm']) {
+            $realm = jApp::coord()->request->getDomainName()
+                .'~'. $this->repository->getKey()
+                .'~'. $this->project->getKey()
+                .'~'. jAuth::getUserSession()->login;
+            $headers['X-Job-Realm'] = sha1($realm);
+        }
+
         if ($this->requestXml !== null) {
             $headers['Content-Type'] = 'text/xml';
             $options = array(

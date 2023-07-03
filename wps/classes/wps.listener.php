@@ -6,6 +6,11 @@ class wpsListener extends jEventListener
 {
     public function ongetMapAdditions($event)
     {
+        //$user = jAuth::createUserObject('user_in_group_a', 'admin');
+        //$user->email = 'user_in_group_a@nomail.nomail';
+        //$user = jAuth::createUserObject('publisher', 'admin');
+        //$user->email = 'publisher@nomail.nomail';
+        //jAuth::saveNewUser($user);
         if (!$this->isAvailable($event)) {
             return;
         }
@@ -109,10 +114,17 @@ class wpsListener extends jEventListener
 
     protected function isAvailable($event)
     {
+        $wpsConfig = jApp::config()->wps;
 
         // get wps rootDirectories
-        $rootDirectories = jApp::config()->wps['wps_rootDirectories'];
+        $rootDirectories = $wpsConfig['wps_rootDirectories'];
         if (!$rootDirectories) {
+            return false;
+        }
+
+        if (array_key_exists('restrict_to_authenticated_users', $wpsConfig)
+            && $wpsConfig['restrict_to_authenticated_users']
+            && !jAuth::isConnected()) {
             return false;
         }
 
@@ -134,6 +146,12 @@ class wpsListener extends jEventListener
         }
 
         $this->lproj = $lproj;
+
+        if (array_key_exists('restrict_to_config_projects', $wpsConfig)
+            && $wpsConfig['restrict_to_config_projects']
+            && !file_exists($lproj->getQgisPath().'.json')) {
+            return false;
+        }
 
         return true;
     }
