@@ -12,27 +12,18 @@
 class lizmapWPSRequest extends lizmapOGCRequest
 {
     protected $tplExceptions = 'wps~wps_exception';
-    protected $xml_post;
 
     /**
-     * constructor
-     * project : the project has a lizmapProject Class
-     * params : the params array.
+     * constructor.
      *
-     * @param mixed      $params
-     * @param null|mixed $xml_post
+     * @param lizmapProject $project    the project has a lizmapProject Class
+     * @param array         $params     the OGC request parameters array
+     * @param string        $requestXml the OGC XML Request as string
      */
-    public function __construct($params, $xml_post = null)
+    public function __construct($project, $params, $requestXml = null)
     {
+        parent::__construct($project, $params, $requestXml);
         $this->services = lizmap::getServices();
-        $nParams = lizmapProxy::normalizeParams($params);
-        foreach ($params as $k => $v) {
-            if (strtolower($k) === 'repository' || strtolower($k) === 'project') {
-                $nParams[strtolower($k)] = $v;
-            }
-        }
-        $this->params = $nParams;
-        $this->xml_post = $xml_post;
 
         $wpsConfig = jApp::config()->wps;
         $this->wps_url = $wpsConfig['wps_rootUrl'];
@@ -53,7 +44,7 @@ class lizmapWPSRequest extends lizmapOGCRequest
      * we have the secure version of the method, in case where the lizmap version
      * is <= 3.4.3, <= 3.3.15
      *
-     * deprecated: remove this overrided method when we will mark the module compatible
+     * deprecated: remove this overridden method when we will mark the module compatible
      * only with Lizmap 3.5.
      *
      * @return array
@@ -322,12 +313,12 @@ class lizmapWPSRequest extends lizmapOGCRequest
         $headers = $this->userHttpHeader();
         $headers['Connection'] = 'close';
 
-        if ($this->xml_post !== null) {
+        if ($this->requestXml !== null) {
             $headers['Content-Type'] = 'text/xml';
             $options = array(
                 'method' => 'post',
                 'headers' => $headers,
-                'body' => $this->xml_post,
+                'body' => $this->requestXml,
             );
         } else {
             $options = array(

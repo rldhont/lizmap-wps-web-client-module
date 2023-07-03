@@ -13,6 +13,8 @@ var Petra = function() {
         OpenLayers.Request.GET({
             url: lizUrls['wps_wps'],
             params: {
+                "repository": lizUrls.params.repository,
+                "project": lizUrls.params.project,
                 "SERVICE": "WPS",
                 "REQUEST": "GetCapabilities"
             },
@@ -1799,6 +1801,8 @@ var Petra = function() {
         OpenLayers.Request.GET({
             url: lizUrls['wps_wps'],
             params: {
+                "repository": lizUrls.params.repository,
+                "project": lizUrls.params.project,
                 "SERVICE": "WPS",
                 "REQUEST": "GetResults",
                 "uuid": uuid

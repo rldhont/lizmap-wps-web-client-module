@@ -13,6 +13,9 @@ class serviceCtrl extends jController
 {
     protected $params;
     protected $xml_post;
+    protected $project;
+    protected $repository;
+    protected $services;
 
     public function index()
     {
@@ -73,21 +76,23 @@ class serviceCtrl extends jController
 
             return $this->serviceException();
         }
+        $this->getServiceParameters();
         $request = strtolower($params['request']);
         $wpsRequest = null;
         if ($request == 'getcapabilities') {
             $wpsRequest = new lizmapWPSRequest(
+                $this->project,
                 array(
                     'service' => 'WPS',
                     'request' => 'GetCapabilities',
                 )
             );
         } elseif ($request == 'describeprocess') {
-            $wpsRequest = new lizmapWPSRequest($params, $this->xml_post);
+            $wpsRequest = new lizmapWPSRequest($this->project, $params, $this->xml_post);
         } elseif ($request == 'execute') {
-            $wpsRequest = new lizmapWPSRequest($params, $this->xml_post);
+            $wpsRequest = new lizmapWPSRequest($this->project, $params, $this->xml_post);
         } elseif ($request == 'getresults') {
-            $wpsRequest = new lizmapWPSRequest($params, $this->xml_post);
+            $wpsRequest = new lizmapWPSRequest($this->project, $params, $this->xml_post);
         }
 
         if ($wpsRequest === null) {
@@ -136,6 +141,69 @@ class serviceCtrl extends jController
         }
 
         return $rep;
+    }
+
+    /**
+     * Read parameters and set classes for the project and repository given.
+     *
+     * @return bool false if some request parameters are missing
+     */
+    protected function getServiceParameters()
+    {
+        // Get the project
+        $project = $this->params['project'];
+
+        if (!$project) {
+            jMessage::add('The parameter project is mandatory !', 'ProjectNotDefined');
+
+            return false;
+        }
+
+        // Get repository data
+        $repository = $this->params['repository'];
+        if (!$repository) {
+            jMessage::add('The repository parameter is missing', 'RepositoryNotDefined');
+
+            return false;
+        }
+
+        // Get the corresponding repository
+        $lrep = lizmap::getRepository($repository);
+        if (!$lrep) {
+            jMessage::add('The repository '.strtoupper($repository).' does not exist !', 'RepositoryNotDefined');
+
+            return false;
+        }
+        // Get the project object
+        $lproj = null;
+
+        try {
+            $lproj = lizmap::getProject($repository.'~'.$project);
+            if (!$lproj) {
+                jMessage::add('The lizmap project '.strtoupper($project).' does not exist !', 'ProjectNotDefined');
+
+                return false;
+            }
+        } catch (\Lizmap\Project\UnknownLizmapProjectException $e) {
+            jLog::logEx($e, 'error');
+            jMessage::add('The lizmap project '.strtoupper($project).' does not exist !', 'ProjectNotDefined');
+
+            return false;
+        }
+
+        // Redirect if no rights to access this repository
+        if (!$lproj->checkAcl()) {
+            jMessage::add(jLocale::get('view~default.repository.access.denied'), 'AuthorizationRequired');
+
+            return false;
+        }
+
+        $this->params['map'] = $lproj->getRelativeQgisPath();
+
+        // Define class private properties
+        $this->project = $lproj;
+        $this->repository = $lrep;
+        $this->services = lizmap::getServices();
     }
 
     public function store()
