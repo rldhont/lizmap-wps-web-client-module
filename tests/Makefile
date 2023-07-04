@@ -106,6 +106,10 @@ install-module:
 	docker compose exec -u $(LIZMAP_USER_ID) lizmap php /www/lizmap/install/installer.php -v
 
 import-lizmap-acl:
+	@echo "Create users"
+	docker compose exec -u $(LIZMAP_USER_ID) lizmap /bin/sh -c ' \
+		php lizmap/console.php jcommunity:user:create user_in_group_a user_in_group_a@nomail.nomail admin ; \
+		php lizmap/console.php jcommunity:user:create publisher publisher@nomail.nomail admin'
 	@echo "Set repositories and users rights if needed"
 	@echo "Set view project"
 	docker compose exec -u $(LIZMAP_USER_ID) lizmap /bin/sh -c ' \
