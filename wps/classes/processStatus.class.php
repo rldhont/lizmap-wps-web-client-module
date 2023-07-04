@@ -32,12 +32,51 @@ class processStatus
         $this->url = $wps_url.'status/';
     }
 
+    public function all($identifier, $repository, $project)
+    {
+        $url = $this->url.'?SERVICE=WPS';
+        $headers = $this->userHttpHeader($repository, $project);
+        $options = array(
+            'method' => 'get',
+            'headers' => $headers,
+        );
+        list($data, $mime, $code) = lizmapProxy::getRemoteData($url, $options);
+
+        if (empty($data) or floor($code / 100) >= 4) {
+            $data = array();
+        } else {
+            $data = json_decode($data);
+        }
+
+        if (property_exists($data, 'status')) {
+            $uuids = array();
+            foreach ($data->status as $s) {
+                $uuids[$s->uuid] = array(
+                    'uuid' => $s->uuid,
+                    'identifier' => $s->identifier,
+                    'startTime' => $s->time_start,
+                    'status' => $s->status,
+                    'endTime' => $s->time_end,
+                );
+            }
+            $data = $uuids;
+        }
+
+        return $data;
+    }
+
     public function saved($identifier, $repository, $project)
     {
         $url = $this->url.'?SERVICE=WPS';
-        list($data, $mime, $code) = lizmapProxy::getRemoteData($url);
+        $headers = $this->userHttpHeader($repository, $project);
+        $options = array(
+            'method' => 'get',
+            'headers' => $headers,
+        );
+        list($data, $mime, $code) = lizmapProxy::getRemoteData($url, $options);
 
         if (empty($data) or floor($code / 100) >= 4) {
+            jLog::log('Status saved data is empty or code error '.$code);
             $data = array();
         }
 
@@ -50,12 +89,14 @@ class processStatus
             }
             $data = $uuids;
         } else {
+            jLog::log('Status saved no status property in data');
             $data = array();
         }
 
         $saved = $this->db->get($identifier.':'.$repository.':'.$project);
 
         if (!$saved) {
+            jLog::log('Status saved nothing for '.$identifier.':'.$repository.':'.$project);
             return array();
         }
 
@@ -69,6 +110,8 @@ class processStatus
             }
 
             return $uuids;
+        } else {
+            jLog::log('Status saved is empty for '.$identifier.':'.$repository.':'.$project);
         }
 
         return array();
@@ -77,18 +120,25 @@ class processStatus
     public function get($identifier, $repository, $project, $uuid)
     {
         $url = $this->url.$uuid.'?SERVICE=WPS';
-        list($data, $mime, $code) = lizmapProxy::getRemoteData($url);
-
-        $saved = $this->saved($identifier, $repository, $project);
-
-        $status = $this->db->get($uuid);
+        $headers = $this->userHttpHeader($repository, $project);
+        $options = array(
+            'method' => 'get',
+            'headers' => $headers,
+        );
+        list($data, $mime, $code) = lizmapProxy::getRemoteData($url, $options);
         if (empty($data) or floor($code / 100) >= 4) {
-            $status = null;
+            jLog::log('Status get data is empty or code error '.$code);
+            return null;
         }
 
+        //$saved = $this->saved($identifier, $repository, $project);
+
+        $status = $this->db->get($uuid);
+
         if (!$status) {
-            unset($saved[array_search($uuid, $saved)]);
-            $this->db->set($identifier.':'.$repository.':'.$project, implode(',', $saved));
+            jLog::log('Status get nothing for '.$uuid);
+            //unset($saved[array_search($uuid, $saved)]);
+            //$this->db->set($identifier.':'.$repository.':'.$project, implode(',', $saved));
 
             return null;
         }
@@ -101,6 +151,7 @@ class processStatus
         $saved = $this->saved($identifier, $repository, $project);
 
         if (!in_array($uuid, $saved)) {
+            jLog::log('Status update uuid not in saved '.$uuid);
             $saved[] = $uuid;
         }
 
@@ -111,6 +162,7 @@ class processStatus
         }
 
         $this->db->set($identifier.':'.$repository.':'.$project, implode(',', $saved));
+        jLog::log('Status update saved uuids: '.implode(',', $saved));
 
         return true;
     }
@@ -157,5 +209,41 @@ class processStatus
 
         // Create the virtual status profile
         jProfiles::createVirtualProfile('jkvdb', self::$profile, $statusParams);
+    }
+
+
+    protected function userHttpHeader($repository, $project)
+    {
+        // Check if a user is authenticated
+        if (!jAuth::isConnected()) {
+            // return empty header array
+            return array();
+        }
+
+        $user = jAuth::getUserSession();
+        $userGroups = jAcl2DbUserGroup::getGroups();
+
+        $headers = array(
+            'X-Lizmap-User' => $user->login,
+            'X-Lizmap-User-Groups' => implode(', ', $userGroups),
+        );
+
+        $wpsConfig = jApp::config()->wps;
+        if (array_key_exists('restrict_to_authenticated_users', $wpsConfig)
+            && $wpsConfig['restrict_to_authenticated_users']
+            && array_key_exists('enable_job_realm', $wpsConfig)
+            && $wpsConfig['enable_job_realm']) {
+            $lrep = lizmap::getRepository($repository);
+            $lproj = lizmap::getProject($repository.'~'.$project);
+            $realm = jApp::coord()->request->getDomainName()
+                .'~'. $lrep->getKey()
+                .'~'. $lproj->getKey()
+                .'~'. jAuth::getUserSession()->login;
+            $headers['X-Job-Realm'] = sha1($realm);
+            $headers['X-Job-Realm'] = 'e8c10c9dc66f62dec1d52af7549bfc67a11dd6a2';
+            jLog::log('Status '.$realm.' '.$headers['X-Job-Realm']);
+        }
+
+        return $headers;
     }
 }

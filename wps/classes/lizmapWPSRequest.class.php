@@ -313,18 +313,6 @@ class lizmapWPSRequest extends lizmapOGCRequest
         $headers = $this->userHttpHeader();
         $headers['Connection'] = 'close';
 
-        $wpsConfig = jApp::config()->wps;
-        if (array_key_exists('restrict_to_authenticated_users', $wpsConfig)
-            && $wpsConfig['restrict_to_authenticated_users']
-            && array_key_exists('enable_job_realm', $wpsConfig)
-            && $wpsConfig['enable_job_realm']) {
-            $realm = jApp::coord()->request->getDomainName()
-                .'~'. $this->repository->getKey()
-                .'~'. $this->project->getKey()
-                .'~'. jAuth::getUserSession()->login;
-            $headers['X-Job-Realm'] = sha1($realm);
-        }
-
         if ($this->requestXml !== null) {
             $headers['Content-Type'] = 'text/xml';
             $options = array(
@@ -364,9 +352,24 @@ class lizmapWPSRequest extends lizmapOGCRequest
         $user = jAuth::getUserSession();
         $userGroups = jAcl2DbUserGroup::getGroups();
 
-        return array(
+        $headers = array(
             'X-Lizmap-User' => $user->login,
             'X-Lizmap-User-Groups' => implode(', ', $userGroups),
         );
+
+        $wpsConfig = jApp::config()->wps;
+        if (array_key_exists('restrict_to_authenticated_users', $wpsConfig)
+            && $wpsConfig['restrict_to_authenticated_users']
+            && array_key_exists('enable_job_realm', $wpsConfig)
+            && $wpsConfig['enable_job_realm']) {
+            $realm = jApp::coord()->request->getDomainName()
+                .'~'. $this->repository->getKey()
+                .'~'. $this->project->getKey()
+                .'~'. jAuth::getUserSession()->login;
+            $headers['X-Job-Realm'] = sha1($realm);
+            jLog::log($this->param('request').' '.$realm.' '.$headers['X-Job-Realm']);
+        }
+
+        return $headers;
     }
 }
